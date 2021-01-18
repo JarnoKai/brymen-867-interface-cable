@@ -1,19 +1,14 @@
 #include "config.h"
-#include <avr/io.h>
-#include <util/delay.h>
-#include <avr/interrupt.h>
-#include <avr/pgmspace.h>
 #include "decoder.h"
-#include "softUART\softUART.h"
 
-uint8_t data[20];
+byte data[20];
 extern volatile bool rawData;
 
-uint8_t getByte(void)
+byte getByte(void)
 {
-	uint8_t temp = 0;
+	byte temp = 0;
 
-	for (uint8_t i = 0; i < 8; i ++)
+	for (byte i = 0; i < 8; i ++)
 	{
 		IRLED_HIGH;
 		_delay_us(CLOCK_DELAY);
@@ -27,13 +22,13 @@ uint8_t getByte(void)
 	return temp;
 }
 
-uint8_t getData(void)
+byte getData(void)
 {
 	IRLED_HIGH;
 	_delay_ms(10);
 	IRLED_LOW;
 
-	uint8_t timeout = 0xFF;
+	byte timeout = 0xFF;
 	while (!IRTRAN_LOW)
 	{
 		timeout--;
@@ -41,7 +36,7 @@ uint8_t getData(void)
 		_delay_us(2000);
 	}
 
-	for (uint8_t i = 0; i < 20; i ++)
+	for (byte i = 0; i < 20; i ++)
 		data[i] = getByte();
 
 	return 1;
@@ -51,138 +46,138 @@ void processData(void)
 {
 	if (rawData)
 	{
-		uart_sendString_P(PSTR("RAW DATA: "));
+		Serial.print("RAW DATA: ");
 		
-		for (uint8_t i = 0; i < 20; i++)
+		for (byte i = 0; i < 20; i++)
 		{
-			uart_sendNumber(data[i], 16);
-			uart_sendChar(' ');
+			Serial.print(data[i], HEX);
+			Serial.print(' ');
 		}
 
-		uart_sendChar('\n');
+		Serial.print('\n');
 		return;
 	}
 
 	//decode the output
 	if (data[0] & 0x01)
-		uart_sendString_P(PSTR("AUTO "));
+		Serial.print("AUTO ");
 	if ((data[0] >> 7) & 0x01)
-		uart_sendString_P(PSTR("AVG "));
+		Serial.print("AVG ");
 	if ((data[0] >> 6) & 0x01)
-		uart_sendString_P(PSTR("MIN "));
+		Serial.print("MIN ");
 	if ((data[0] >> 5) & 0x01)
-		uart_sendString_P(PSTR("MAX "));
+		Serial.print("MAX ");
 	if ((data[0] >> 2) & 0x01)
-		uart_sendString_P(PSTR("CREST "));
+		Serial.print("CREST ");
 	if ((data[0] >> 1) & 0x01)
-		uart_sendString_P(PSTR("REC "));
+		Serial.print("REC ");
 	if ((data[0] >> 3) & 0x01)
-		uart_sendString_P(PSTR("HOLD "));
+		Serial.print("HOLD ");
 	if (data[2] & 0x01)
-		uart_sendString_P(PSTR("DELTA "));
+		Serial.print("DELTA ");
 	if (data[9] & 0x01)
-		uart_sendString_P(PSTR("BEEP "));
+		Serial.print("BEEP ");
 
 	//DECODE MAIN DISPLAY
-	uart_sendString_P(PSTR("MAIN: "));
+	Serial.print("MAIN: ");
 
 	if ((data[1] >> 7) & 0x01)
-		uart_sendChar('-');
+		Serial.print('-');
 
-	for (uint8_t i = 0; i < 6; i++)
+	for (byte i = 0; i < 6; i++)
 	{
-		uart_sendChar(48 + decodeDigit(data[2 + i]));
+		Serial.write(48 + decodeDigit(data[2 + i]));
 		if ((data[3 + i] & 0x01) & (i < 4))
-		uart_sendChar('.');
+		Serial.print('.');
 	}
-	uart_sendChar(' ');
+	Serial.print(' ');
 	
 	//DECODE UNIT PREFIX FOR MAIN DISPLAY
 	if ((data[13] >> 6) & 0x01)
-		uart_sendChar('n');
+		Serial.print('n');
 	if ((data[14] >> 3) & 0x01)
-		uart_sendChar('u');
+		Serial.print('u');
 	if ((data[14] >> 2) & 0x01)
-		uart_sendChar('m');
+		Serial.print('m');
 	if ((data[14] >> 6) & 0x01)
-		uart_sendChar('k');
+		Serial.print('k');
 	if ((data[14] >> 5) & 0x01)
-		uart_sendChar('M');
+		Serial.print('M');
 	
 	//DECODE UNIT FOR MAIN DISPLAY
 	if (data[7] & 0x01)
-		uart_sendChar('V');
+		Serial.print('V');
 	if ((data[13] >> 7) & 0x01)
-		uart_sendChar('A');
+		Serial.print('A');
 	if ((data[13] >> 5) & 0x01)
-		uart_sendChar('F');
+		Serial.print('F');
 	if ((data[13] >> 4) & 0x01)
-		uart_sendChar('S');
+		Serial.print('S');
 	if ((data[14] >> 7) & 0x01)
-		uart_sendString_P(PSTR("D%"));
+		Serial.print("D%");
 	if ((data[14] >> 4) & 0x01)
-		uart_sendString_P(PSTR("Ohm"));
+		Serial.print("Ohm");
 	if ((data[14] >> 1) & 0x01)
-		uart_sendString_P(PSTR("dB"));
+		Serial.print("dB");
 	if (data[14] & 0x01)
-		uart_sendString_P(PSTR("Hz"));
-	uart_sendChar(' ');
+		Serial.print("Hz");
+	Serial.print(' ');
 
 	//DC OR AC
 	if ((data[0] >> 4) & 0x01)
-		uart_sendString_P(PSTR("DC "));
+		Serial.print("DC ");
 	if (data[1] & 0x01)
-		uart_sendString_P(PSTR("AC "));
+		Serial.print("AC ");
 
 	//DECODE AUXILIARY DISPLAY
-		uart_sendString_P(PSTR("AUX: "));
+		Serial.print("AUX: ");
 
 	if ((data[8] >> 4) & 0x01)
-		uart_sendChar('-');
+		Serial.print('-');
 
-	for (uint8_t i = 0; i < 4; i++)
+	for (byte i = 0; i < 4; i++)
 	{
-		uart_sendChar(48 + decodeDigit(data[9 + i]));
+		Serial.write(48 + decodeDigit(data[9 + i]));
 		if ((data[10 + i] & 0x01) & (i < 3))
-		uart_sendChar('.');
+		Serial.print('.');
 	}
 	
-	uart_sendChar(' ');
+	Serial.print(' ');
 
 	//DECODE UNIT PREFIX FOR AUXILIARY DISPLAY
 	if ((data[8] >> 1) & 0x01)
-		uart_sendChar('m');
+		Serial.print('m');
 	if (data[8] & 0x01)
-		uart_sendChar('u');
+		Serial.print('u');
 	if ((data[13] >> 1) & 0x01)
-		uart_sendChar('k');
+		Serial.print('k');
 	if (data[13] & 0x01)
-		uart_sendChar('M');
+		Serial.print('M');
 
 	//DECODE UNIT FOR AUXILIARY DISPLAY
 	if ((data[13] >> 2) & 0x01)
-		uart_sendString_P(PSTR("Hz"));
+		Serial.print("Hz");
 	if ((data[13] >> 3) & 0x01)
-		uart_sendChar('V');
+		Serial.print('V');
 	if ((data[8] >> 2) & 0x01)
-		uart_sendChar('A');
+		Serial.print('A');
 	if ((data[8] >> 3) & 0x01)
-		uart_sendString_P(PSTR("%4-20mA"));
-		uart_sendChar(' ');
+		Serial.print("%4-20mA");
+		Serial.print(' ');
 	if ((data[13] >> 2) & 0x01)
-		uart_sendString_P(PSTR("AC "));
+		Serial.print("AC ");
 
 	//FINISH
-	uart_sendChar('\n');
+	Serial.print('\n');
 
 	//detect low battery
 	if ((data[8] >> 7) & 0x01)
-		uart_sendString_P(PSTR("LOW BAT\n"));
+		Serial.println("LOW BAT\n");
 }
 
-int8_t decodeDigit(uint8_t source)
+char decodeDigit(byte source)
 {
-	int8_t result = 0;
+	char result = 0;
 
 	switch (source >> 1)
 	{

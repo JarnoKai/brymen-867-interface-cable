@@ -1,0 +1,6 @@
+{
+    "programmer": "AVRISP mkII",
+    "board": "arduino:avr:uno",
+    "sketch": "BrymenConnector_new.ino",
+    "port": "/dev/ttyUSB1"
+}

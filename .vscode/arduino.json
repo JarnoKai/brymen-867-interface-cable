@@ -1,0 +1,6 @@
+{
+    "programmer": "AVRISP mkII",
+    "board": "arduino:avr:nano",
+    "configuration": "cpu=atmega168",
+    "sketch": "firmware/BrymenConnector_new/main.ino"
+}
